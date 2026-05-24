@@ -32,7 +32,6 @@ jobs:
           - platform: linux/arm64
             os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
-
     steps:
       - name: Prepare platform name
         run: |
@@ -53,14 +52,13 @@ jobs:
 
       - name: Set lowercase repository owner
         id: lowercase
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        run: echo "repo=${{ github.repository }}" | tr '[:upper:]' '[:lower:]' >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
-
         with:
-          images: ghcr.io/mtvpls/moontvplus
+          images: ghcr.io/${{ steps.lowercase.outputs.repo }}
           tags: |
             type=raw,value=${{ github.event.inputs.tag || 'latest' }},enable={{is_default_branch}}
 
@@ -72,8 +70,8 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ghcr.io/mtvpls/moontvplus:${{ github.event.inputs.tag || 'latest' }}
-          outputs: type=image,name=ghcr.io/mtvpls/moontvplus,name-canonical=true,push=true
+          tags: ghcr.io/${{ steps.lowercase.outputs.repo }}:${{ github.event.inputs.tag || 'latest' }}
+          outputs: type=image,name=ghcr.io/${{ steps.lowercase.outputs.repo }},name-canonical=true,push=true
 
       - name: Export digest
         run: |
@@ -113,13 +111,13 @@ jobs:
 
       - name: Set lowercase repository owner
         id: lowercase
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        run: echo "repo=${{ github.repository }}" | tr '[:upper:]' '[:lower:]' >> "$GITHUB_OUTPUT"
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create -t ghcr.io/mtvpls/moontvplus:${{ github.event.inputs.tag || 'latest' }} \
-            $(printf 'ghcr.io/mtvpls/moontvplus@sha256:%s ' *)
+          docker buildx imagetools create -t ghcr.io/${{ steps.lowercase.outputs.repo }}:${{ github.event.inputs.tag || 'latest' }} \
+            $(printf "ghcr.io/${{ steps.lowercase.outputs.repo }}@sha256:%s " *)
 
   cleanup-refresh:
     runs-on: ubuntu-latest
@@ -128,7 +126,7 @@ jobs:
     if: always()
     steps:
       - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@main
+        uses: Mattraks/delete-workflow-runs@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
